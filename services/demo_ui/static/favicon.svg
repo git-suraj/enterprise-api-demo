@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-labelledby="title">
+  <title>Kong Demo Logo</title>
+  <rect width="200" height="200" fill="#a1ff00"/>
+  <path fill="#020202" d="M133 43l26 21-1 18-10 9-12-10-7 8 5 5 19 16-2 16-18 15-39-47-15 18h16l9 13-7 12H46v-21l34-40-1-11 15-18h13l13 14 13-16zm-44 34l-25 31v16h5l17-22 17 22h6l2-3-22-29 16-19-19-22h-6l-1 2 10 12z"/>
+</svg>

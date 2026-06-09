@@ -1,0 +1,17 @@
+{
+	"license": {
+		"version": 1,
+		"signature": "",
+		"payload": {
+			"customer": "own",
+			"license_creation_date": "",
+			"product_subscription": "Kong Enterprise Subscription",
+			"support_plan": "Platinum",
+			"admin_seats": "Unlimited",
+			"dataplanes": "",
+			"license_expiration_date": "",
+			"license_key": "",
+			"model_hours": "36000"
+		}
+	}
+}

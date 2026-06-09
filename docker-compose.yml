@@ -1,0 +1,423 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: kong-demo-postgres
+    environment:
+      POSTGRES_DB: ${KONG_PG_DATABASE:-kong}
+      POSTGRES_USER: ${KONG_PG_USER:-kong}
+      POSTGRES_PASSWORD: ${KONG_PG_PASSWORD:-kong}
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${KONG_PG_USER:-kong} -d ${KONG_PG_DATABASE:-kong}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  kong-migrations:
+    image: ${KONG_IMAGE:-kong/kong-gateway:3.14}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      KONG_DATABASE: postgres
+      KONG_PG_HOST: postgres
+      KONG_PG_PORT: 5432
+      KONG_PG_DATABASE: ${KONG_PG_DATABASE:-kong}
+      KONG_PG_USER: ${KONG_PG_USER:-kong}
+      KONG_PG_PASSWORD: ${KONG_PG_PASSWORD:-kong}
+      KONG_PASSWORD: ${KONG_PASSWORD:-kong-admin-password}
+      KONG_ENFORCE_RBAC: ${KONG_ENFORCE_RBAC-on}
+      KONG_ADMIN_GUI_AUTH: ${KONG_ADMIN_GUI_AUTH-basic-auth}
+      KONG_ADMIN_GUI_SESSION_CONF: ${KONG_ADMIN_GUI_SESSION_CONF-{"secret":"manager-session-secret-change-me","storage":"kong","cookie_secure":false}}
+      KONG_LICENSE_PATH: /etc/kong/license.json
+      KONG_PLUGINS: bundled,payload-crypto-demo
+      KONG_LUA_PACKAGE_PATH: /opt/custom/?.lua;/opt/custom/?/init.lua;;
+      KONG_NGINX_MAIN_ENV: CRYPTO_GATEWAY_PRIVATE_KEY_PASSPHRASE
+      CRYPTO_GATEWAY_PRIVATE_KEY_PASSPHRASE: ${CRYPTO_GATEWAY_PRIVATE_KEY_PASSPHRASE:-gateway-demo-passphrase}
+    volumes:
+      - ./license.json:/etc/kong/license.json:ro
+      - ./certs/crypto:/crypto:ro
+      - ./kong_plugins:/opt/custom:ro
+
+  kong-cp:
+    image: ${KONG_IMAGE:-kong/kong-gateway:3.14}
+    container_name: kong-demo-control-plane
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      KONG_ROLE: control_plane
+      KONG_DATABASE: postgres
+      KONG_PG_HOST: postgres
+      KONG_PG_PORT: 5432
+      KONG_PORTAL: "on"
+      KONG_PORTAL_AND_VITALS_KEY: 5847ed588b6e3bee7c9913804c83b8a08adcbb131e6eaead2bfdd0c3c9b41e51
+      KONG_VITALS: "on"
+      KONG_PG_DATABASE: ${KONG_PG_DATABASE:-kong}
+      KONG_PG_USER: ${KONG_PG_USER:-kong}
+      KONG_PG_PASSWORD: ${KONG_PG_PASSWORD:-kong}
+      KONG_PASSWORD: ${KONG_PASSWORD:-kong-admin-password}
+      KONG_ENFORCE_RBAC: ${KONG_ENFORCE_RBAC-on}
+      KONG_ADMIN_GUI_AUTH: ${KONG_ADMIN_GUI_AUTH-basic-auth}
+      KONG_ADMIN_GUI_SESSION_CONF: ${KONG_ADMIN_GUI_SESSION_CONF-{"secret":"manager-session-secret-change-me","storage":"kong","cookie_secure":false}}
+      KONG_ROUTER_FLAVOR: expressions
+      KONG_PROXY_LISTEN: "off"
+      KONG_ADMIN_LISTEN: 0.0.0.0:8001, 0.0.0.0:8444 ssl
+      KONG_ADMIN_GUI_LISTEN: 0.0.0.0:8002, 0.0.0.0:8445 ssl
+      KONG_ADMIN_GUI_URL: http://localhost:8002
+      KONG_ADMIN_API_URI: http://localhost:8001
+      KONG_PORTAL_API_LISTEN: 0.0.0.0:8004, 0.0.0.0:8447 ssl
+      KONG_PORTAL_API_URL: http://localhost:8004
+      KONG_PORTAL_GUI_LISTEN: 0.0.0.0:8003, 0.0.0.0:8446 ssl
+      KONG_PORTAL_GUI_PROTOCOL: http
+      KONG_PORTAL_GUI_HOST: localhost:8003
+      KONG_STATUS_LISTEN: 0.0.0.0:8100
+      KONG_CLUSTER_MTLS: pki
+      KONG_CLUSTER_CA_CERT: /etc/kong/cluster/cluster.crt
+      KONG_CLUSTER_CERT: /etc/kong/cluster/cluster.crt
+      KONG_CLUSTER_CERT_KEY: /etc/kong/cluster/cluster.key
+      KONG_CLUSTER_SERVER_NAME: kong_clustering
+      KONG_CLUSTER_LISTEN: 0.0.0.0:8005
+      KONG_CLUSTER_TELEMETRY_LISTEN: 0.0.0.0:8006
+      KONG_PROXY_ACCESS_LOG: /dev/stdout
+      KONG_PROXY_ERROR_LOG: /dev/stderr
+      KONG_ADMIN_ACCESS_LOG: /dev/stdout
+      KONG_ADMIN_ERROR_LOG: /dev/stderr
+      KONG_LOG_LEVEL: info
+      KONG_LICENSE_PATH: /etc/kong/license.json
+      KONG_PLUGINS: bundled,payload-crypto-demo
+      KONG_LUA_PACKAGE_PATH: /opt/custom/?.lua;/opt/custom/?/init.lua;;
+      KONG_NGINX_MAIN_ENV: CRYPTO_GATEWAY_PRIVATE_KEY_PASSPHRASE
+      CRYPTO_GATEWAY_PRIVATE_KEY_PASSPHRASE: ${CRYPTO_GATEWAY_PRIVATE_KEY_PASSPHRASE:-gateway-demo-passphrase}
+    ports:
+      - "8001:8001"
+      - "8444:8444"
+      - "8002:8002"
+      - "8445:8445"
+      - "8003:8003"
+      - "8446:8446"
+      - "8004:8004"
+      - "8447:8447"
+    volumes:
+      - ./license.json:/etc/kong/license.json:ro
+      - ./certs/crypto:/crypto:ro
+      - ./certs/hybrid:/etc/kong/cluster:ro
+      - ./kong_plugins:/opt/custom:ro
+    healthcheck:
+      test: ["CMD", "kong", "health"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
+  kong-dp:
+    image: ${KONG_IMAGE:-kong/kong-gateway:3.14}
+    container_name: kong-demo-data-plane
+    depends_on:
+      kong-cp:
+        condition: service_started
+      otel-collector:
+        condition: service_started
+    environment:
+      KONG_ROLE: data_plane
+      KONG_DATABASE: "off"
+      KONG_CLUSTER_MTLS: pki
+      KONG_PORTAL: "on"
+      KONG_PORTAL_AND_VITALS_KEY: 5847ed588b6e3bee7c9913804c83b8a08adcbb131e6eaead2bfdd0c3c9b41e51
+      KONG_VITALS: "on"
+      KONG_CLUSTER_CA_CERT: /etc/kong/cluster/cluster.crt
+      KONG_CLUSTER_CERT: /etc/kong/cluster/cluster.crt
+      KONG_CLUSTER_CERT_KEY: /etc/kong/cluster/cluster.key
+      KONG_CLUSTER_CONTROL_PLANE: kong-cp:8005
+      KONG_CLUSTER_TELEMETRY_ENDPOINT: kong-cp:8006
+      KONG_CLUSTER_SERVER_NAME: kong_clustering
+      KONG_ROUTER_FLAVOR: expressions
+      KONG_TRACING_INSTRUMENTATIONS: all
+      KONG_TRACING_SAMPLING_RATE: "1.0"
+      KONG_REAL_IP_HEADER: X-Forwarded-For
+      KONG_TRUSTED_IPS: 0.0.0.0/0,::/0
+      KONG_REAL_IP_RECURSIVE: "on"
+      KONG_PROXY_LISTEN: 0.0.0.0:8000, 0.0.0.0:8443 ssl
+      KONG_ADMIN_LISTEN: "off"
+      KONG_ADMIN_GUI_LISTEN: "off"
+      KONG_STATUS_LISTEN: 0.0.0.0:8100
+      KONG_PROXY_ACCESS_LOG: /dev/stdout
+      KONG_PROXY_ERROR_LOG: /dev/stderr
+      KONG_LOG_LEVEL: info
+      KONG_LICENSE_PATH: /etc/kong/license.json
+      KONG_PLUGINS: bundled,payload-crypto-demo
+      KONG_LUA_PACKAGE_PATH: /opt/custom/?.lua;/opt/custom/?/init.lua;;
+      KONG_NGINX_MAIN_ENV: CRYPTO_GATEWAY_PRIVATE_KEY_PASSPHRASE
+      CRYPTO_GATEWAY_PRIVATE_KEY_PASSPHRASE: ${CRYPTO_GATEWAY_PRIVATE_KEY_PASSPHRASE:-gateway-demo-passphrase}
+    ports:
+      - "8000:8000"
+      - "8443:8443"
+      - "8100:8100"
+    volumes:
+      - ./license.json:/etc/kong/license.json:ro
+      - ./certs/crypto:/crypto:ro
+      - ./certs/hybrid:/etc/kong/cluster:ro
+      - ./kong_plugins:/opt/custom:ro
+    healthcheck:
+      test: ["CMD", "kong", "health"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
+  orders-east:
+    image: python:3.13-slim
+    container_name: kong-demo-orders-east
+    working_dir: /app
+    command: ["python", "-u", "server.py", "--service", "orders-east", "--region", "east", "--port", "9101"]
+    ports:
+      - "9101:9101"
+    volumes:
+      - ./services/mock_upstream:/app:ro
+
+  orders-west:
+    image: python:3.13-slim
+    container_name: kong-demo-orders-west
+    working_dir: /app
+    command: ["python", "-u", "server.py", "--service", "orders-west", "--region", "west", "--port", "9102"]
+    ports:
+      - "9102:9102"
+    volumes:
+      - ./services/mock_upstream:/app:ro
+
+  orders-instance-1:
+    image: python:3.13-slim
+    container_name: kong-demo-orders-instance-1
+    working_dir: /app
+    command: ["python", "-u", "server.py", "--service", "orders-instance-1", "--region", "instance-1", "--port", "9201"]
+    ports:
+      - "9201:9201"
+    volumes:
+      - ./services/mock_upstream:/app:ro
+
+  orders-instance-2:
+    image: python:3.13-slim
+    container_name: kong-demo-orders-instance-2
+    working_dir: /app
+    command: ["python", "-u", "server.py", "--service", "orders-instance-2", "--region", "instance-2", "--port", "9202"]
+    ports:
+      - "9202:9202"
+    volumes:
+      - ./services/mock_upstream:/app:ro
+
+  orders-v1:
+    image: python:3.13-slim
+    container_name: kong-demo-orders-v1
+    working_dir: /app
+    command:
+      [
+        "python",
+        "-u",
+        "server.py",
+        "--service",
+        "orders-v1",
+        "--region",
+        "version-v1",
+        "--api-version",
+        "v1",
+        "--release-stage",
+        "deprecated",
+        "--port",
+        "9301"
+      ]
+    ports:
+      - "9301:9301"
+    volumes:
+      - ./services/mock_upstream:/app:ro
+
+  orders-v2:
+    image: python:3.13-slim
+    container_name: kong-demo-orders-v2
+    working_dir: /app
+    command:
+      [
+        "python",
+        "-u",
+        "server.py",
+        "--service",
+        "orders-v2",
+        "--region",
+        "version-v2",
+        "--api-version",
+        "v2",
+        "--release-stage",
+        "current",
+        "--port",
+        "9302"
+      ]
+    ports:
+      - "9302:9302"
+    volumes:
+      - ./services/mock_upstream:/app:ro
+
+  datakit-api1:
+    image: python:3.13-slim
+    container_name: kong-demo-datakit-api1
+    working_dir: /app
+    command: ["python", "-u", "server.py", "--service", "datakit-api1", "--region", "datakit", "--port", "9401"]
+    ports:
+      - "9401:9401"
+    volumes:
+      - ./services/mock_upstream:/app:ro
+
+  datakit-api2:
+    image: python:3.13-slim
+    container_name: kong-demo-datakit-api2
+    working_dir: /app
+    command: ["python", "-u", "server.py", "--service", "datakit-api2", "--region", "datakit", "--port", "9402"]
+    ports:
+      - "9402:9402"
+    volumes:
+      - ./services/mock_upstream:/app:ro
+
+  redis:
+    image: redis:7.4-alpine
+    container_name: kong-demo-redis
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    ports:
+      - "6379:6379"
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.1.0
+    container_name: kong-demo-keycloak
+    command: ["start-dev", "--http-enabled=true", "--hostname-strict=false"]
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN_USERNAME:-admin}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
+    ports:
+      - "8081:8080"
+
+  loki:
+    image: grafana/loki:3.0.0
+    container_name: kong-demo-loki
+    command: ["-config.file=/etc/loki/config.yaml"]
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./observability/loki/config.yaml:/etc/loki/config.yaml:ro
+
+  tempo:
+    image: grafana/tempo:2.5.0
+    container_name: kong-demo-tempo
+    command: ["-config.file=/etc/tempo/config.yaml"]
+    ports:
+      - "3201:3200"
+      - "4319:4318"
+    volumes:
+      - ./observability/tempo/config.yaml:/etc/tempo/config.yaml:ro
+
+  tempo-portal:
+    image: nginx:1.27-alpine
+    container_name: kong-demo-tempo-portal
+    ports:
+      - "3200:80"
+    volumes:
+      - ./observability/tempo-portal/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./observability/tempo-portal/index.html:/usr/share/nginx/html/index.html:ro
+    depends_on:
+      - tempo
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.101.0
+    container_name: kong-demo-otel-collector
+    command: ["--config=/etc/otelcol/config.yaml"]
+    ports:
+      - "4317:4317"
+      - "4318:4318"
+    volumes:
+      - ./observability/otel-collector/config.yaml:/etc/otelcol/config.yaml:ro
+    depends_on:
+      - loki
+      - tempo
+
+  crypto-helper:
+    image: python:3.13-slim
+    container_name: kong-demo-crypto-helper
+    working_dir: /app
+    command: ["python", "-u", "app.py"]
+    environment:
+      CRYPTO_HELPER_HOST: 0.0.0.0
+      CRYPTO_HELPER_PORT: "8092"
+      CRYPTO_GATEWAY_PRIVATE_KEY_PATH: /crypto/gateway_private.pem
+      CRYPTO_GATEWAY_PUBLIC_KEY_PATH: /crypto/gateway_public.pem
+      CRYPTO_CLIENT_PRIVATE_KEY_PATH: /crypto/client_private.pem
+      CRYPTO_CLIENT_PUBLIC_KEY_PATH: /crypto/client_public.pem
+      CRYPTO_GATEWAY_PRIVATE_KEY_PASSPHRASE: ${CRYPTO_GATEWAY_PRIVATE_KEY_PASSPHRASE:-gateway-demo-passphrase}
+    volumes:
+      - ./services/crypto_helper:/app:ro
+      - ./certs/crypto:/crypto:ro
+
+  grafana:
+    image: grafana/grafana:11.0.0
+    container_name: kong-demo-grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
+      GF_USERS_DEFAULT_THEME: dark
+    ports:
+      - "3001:3000"
+    volumes:
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      - loki
+      - tempo
+
+  demo-ui:
+    build:
+      context: ./services/demo_ui
+      dockerfile: Dockerfile
+    container_name: kong-demo-ui
+    working_dir: /app
+    command: ["python", "-u", "app.py"]
+    environment:
+      DEMO_HOST: 0.0.0.0
+      DEMO_PORT: "8080"
+      KONG_PROXY_URL: http://kong-dp:8000
+      KONG_TLS_PROXY_URL: https://kong-dp:8443
+      KONG_ADMIN_URL: http://kong-cp:8001
+      KONG_MANAGER_URL: http://localhost:8002
+      KONG_ADMIN_TOKEN: ${KONG_ADMIN_TOKEN:-local-demo-admin-token}
+      DEMO_LOGS_URL: http://localhost:3001/d/kong-observability-overview/kong-observability-overview
+      DEMO_REQUEST_AUDIT_URL: http://localhost:3001/explore
+      DEMO_AUDIT_URL: http://localhost:8002
+      DEMO_TRACE_URL: http://localhost:3001/explore
+      DEMO_PAYLOAD_INSPECTION_URL: http://localhost:3001/explore
+      DEMO_DEBUGGER_URL: http://localhost:8001
+      AD_PROTECTED_API_TENANT_ID: ${AD_PROTECTED_API_TENANT_ID:-}
+      AD_PROTECTED_API_AUDIENCE: ${AD_PROTECTED_API_AUDIENCE:-}
+      AD_CONSUMER1_CLIENT_ID: ${AD_CONSUMER1_CLIENT_ID:-}
+      AD_CONSUMER1_SECRET: ${AD_CONSUMER1_SECRET:-}
+      AD_CONSUMER2_CLIENT_ID: ${AD_CONSUMER2_CLIENT_ID:-}
+      AD_CONSUMER2_SECRET: ${AD_CONSUMER2_SECRET:-}
+      KEYCLOAK_REALM: ${KEYCLOAK_REALM:-kong-demo}
+      KEYCLOAK_ALLOWED_ROLE: ${KEYCLOAK_ALLOWED_ROLE:-api-access}
+      KEYCLOAK_CONSUMER1_CLIENT_ID: ${KEYCLOAK_CONSUMER1_CLIENT_ID:-consumer-1}
+      KEYCLOAK_CONSUMER1_SECRET: ${KEYCLOAK_CONSUMER1_SECRET:-consumer-1-secret}
+      KEYCLOAK_CONSUMER2_CLIENT_ID: ${KEYCLOAK_CONSUMER2_CLIENT_ID:-consumer-2}
+      KEYCLOAK_CONSUMER2_SECRET: ${KEYCLOAK_CONSUMER2_SECRET:-consumer-2-secret}
+      KEYCLOAK_INTERNAL_BASE_URL: http://keycloak:8080
+      CRYPTO_HELPER_URL: http://crypto-helper:8092
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./services/demo_ui:/app:ro
+      - ./img:/img:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      - kong-cp
+      - kong-dp
+      - keycloak
+      - grafana
+      - crypto-helper
+      - datakit-api1
+      - datakit-api2
+      - redis

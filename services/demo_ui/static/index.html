@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Kong Enterprise Demo</title>
+    <link rel="icon" type="image/png" href="/img/image.png" />
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <div class="brand-block">
+          <img class="brand-logo" src="/img/image.png" alt="Kong logo" />
+          <div class="brand-copy">
+            <strong>Kong API Management</strong>
+          </div>
+        </div>
+        <div class="header-controls">
+          <div id="scenePicker" class="scene-picker">
+            <span>Scenes</span>
+            <button id="scenePickerTrigger" class="scene-picker-trigger" type="button" aria-haspopup="listbox" aria-expanded="false">
+              <strong id="scenePickerCurrent">Select Scene</strong>
+              <i class="scene-picker-chevron" aria-hidden="true"></i>
+            </button>
+            <div id="sceneMenu" class="scene-menu hidden" role="listbox" aria-label="Scenes"></div>
+            <select id="sceneSelect" class="scene-select-native" tabindex="-1" aria-hidden="true"></select>
+          </div>
+          <button id="resetSceneButton" class="ghost-button" type="button">Reset Scene</button>
+          <button id="onboardApiButton" class="ghost-button" type="button">Onboard API</button>
+          <button id="viewArchitectureButton" class="ghost-button" type="button">Scene Details</button>
+          <button id="viewTraceButton" class="ghost-button" type="button">View Trace</button>
+          <button id="viewLogsButton" class="ghost-button" type="button">Observability</button>
+          <button id="viewRequestAuditButton" class="ghost-button" type="button">Log Explorer</button>
+        </div>
+      </header>
+
+      <main class="workspace">
+        <section class="canvas-panel">
+          <div class="panel-header">
+            <div>
+              <p class="eyebrow">Active Scene</p>
+              <h2 id="sceneTitle">Header-Based Routing</h2>
+            </div>
+            <div class="status-pills">
+              <span id="statusKong" class="status-pill neutral">Kong Waiting</span>
+              <span id="statusRoute" class="status-pill neutral">Route Pending</span>
+            </div>
+          </div>
+
+          <div class="scene-outcome-strip" aria-live="polite">
+            <div class="scene-outcome-heading">
+              <span class="scene-outcome-icon" aria-hidden="true">i</span>
+              <p class="scene-outcome-label">Expected Outcome</p>
+            </div>
+            <p id="expectedOutcome" class="scene-outcome-copy">Orders East should receive the request.</p>
+          </div>
+
+          <div class="topology-grid">
+            <svg class="topology-wireframe" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+              <line class="connector" data-connector="client-kong" x1="22" y1="50" x2="39" y2="50"></line>
+              <polyline class="connector" data-connector="kong-east" points="61,50 70,50 70,29 78,29"></polyline>
+              <polyline class="connector" data-connector="kong-west" points="61,50 70,50 70,71 78,71"></polyline>
+            </svg>
+
+            <div class="node node-client" data-node="client">
+              <span id="clientNodeLabel" class="node-label">Client</span>
+              <strong id="clientNodeTitle">Web Caller</strong>
+              <small id="clientNodeSubtitle">GET /orders</small>
+            </div>
+
+            <div class="node node-kong" data-node="kong">
+              <span id="kongNodeLabel" class="node-label">Gateway</span>
+              <strong id="kongNodeTitle">Kong Data Plane</strong>
+              <small id="kongNodeSubtitle">PostgreSQL-backed enterprise node</small>
+            </div>
+
+            <div class="node node-upstream node-east" data-node="east">
+              <span id="eastNodeLabel" class="node-label">Upstream</span>
+              <strong id="eastNodeTitle">Orders East</strong>
+              <small id="eastNodeSubtitle">x-region: east</small>
+            </div>
+
+            <div class="node node-upstream node-west" data-node="west">
+              <span id="westNodeLabel" class="node-label">Upstream</span>
+              <strong id="westNodeTitle">Orders West</strong>
+              <small id="westNodeSubtitle">x-region: west</small>
+            </div>
+          </div>
+
+          <div class="legend-row">
+            <span><i class="legend-dot active"></i> Active path</span>
+            <span><i class="legend-dot idle"></i> Idle path</span>
+            <span><i class="legend-dot error"></i> Route rejected</span>
+          </div>
+        </section>
+
+        <aside class="control-panel">
+          <div class="panel-header">
+            <div>
+              <p class="eyebrow">Scenario Controls</p>
+              <h2 id="controlPanelTitle">Request Builder</h2>
+            </div>
+          </div>
+
+          <div id="headerRoutingControls" class="control-card scene-control-group">
+            <p class="label">Route Selector</p>
+            <div class="segmented-control" id="regionControl">
+              <button class="segment active" data-region="east" type="button">east</button>
+              <button class="segment" data-region="west" type="button">west</button>
+              <button class="segment" data-region="missing" type="button">missing</button>
+            </div>
+          </div>
+
+          <div id="rateModeControls" class="control-card scene-control-group hidden">
+            <p class="label">Execution Mode</p>
+            <div class="segmented-control segmented-control-two" id="modeControl">
+              <button class="segment active" data-mode="anonymous" type="button">anonymous</button>
+              <button class="segment" data-mode="consumer" type="button">consumer</button>
+            </div>
+          </div>
+
+          <div id="rateConsumerControls" class="control-card scene-control-group hidden">
+            <p class="label">Consumer</p>
+            <div class="segmented-control segmented-control-two" id="consumerControl">
+              <button class="segment" data-consumer="consumer-gold" type="button">consumer-gold</button>
+              <button class="segment active" data-consumer="consumer-standard" type="button">consumer-standard</button>
+            </div>
+          </div>
+
+          <div id="rateCounterControls" class="control-card scene-control-group hidden">
+            <p class="label">Execution Counter</p>
+            <p class="body-copy">
+              Each click sends one real request through Kong. The current window counter and reset time come from the latest Kong response.
+            </p>
+          </div>
+
+          <div id="resilienceScenarioControls" class="control-card scene-control-group hidden">
+            <p class="label">Scenario</p>
+            <div class="segmented-control segmented-control-two" id="resilienceScenarioControl">
+              <button class="segment active" data-resilience-scenario="weighted-load-balancing" type="button">
+                Weighted Load Balancing
+              </button>
+              <button class="segment" data-resilience-scenario="circuit-breaker" type="button">
+                Circuit Breaker
+              </button>
+            </div>
+          </div>
+
+          <div id="resilienceInstanceControls" class="control-card scene-control-group hidden">
+            <p class="label">Service Instances</p>
+            <div class="instance-control-list">
+              <div class="instance-control-row">
+                <div class="instance-copy">
+                  <strong>Service Instance 1</strong>
+                  <small id="instance1Status">unknown</small>
+                </div>
+                <div class="instance-actions">
+                  <button class="ghost-button compact-button" data-instance-action="start" data-instance-id="instance-1" type="button">Start</button>
+                  <button class="ghost-button compact-button" data-instance-action="stop" data-instance-id="instance-1" type="button">Stop</button>
+                </div>
+              </div>
+              <div class="instance-control-row">
+                <div class="instance-copy">
+                  <strong>Service Instance 2</strong>
+                  <small id="instance2Status">unknown</small>
+                </div>
+                <div class="instance-actions">
+                  <button class="ghost-button compact-button" data-instance-action="start" data-instance-id="instance-2" type="button">Start</button>
+                  <button class="ghost-button compact-button" data-instance-action="stop" data-instance-id="instance-2" type="button">Stop</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div id="identityConsumerControls" class="control-card scene-control-group hidden">
+            <p class="label">Consumer</p>
+            <div class="segmented-control segmented-control-two" id="identityConsumerControl">
+              <button class="segment active" data-identity-consumer="consumer-1" type="button">consumer-1</button>
+              <button class="segment" data-identity-consumer="consumer-2" type="button">consumer-2</button>
+            </div>
+          </div>
+
+          <div id="identityTokenControls" class="control-card scene-control-group hidden">
+            <p class="label">Access Token</p>
+            <textarea id="tokenEditor" class="token-editor" spellcheck="false"></textarea>
+            <div class="action-row">
+              <button id="generateTokenButton" class="ghost-button" type="button">Generate Token</button>
+              <button id="decodeTokenButton" class="ghost-button" type="button">Decode JWT</button>
+            </div>
+          </div>
+
+          <div id="identityJwtControls" class="control-card scene-control-group hidden">
+            <p class="label">Decoded JWT</p>
+            <pre id="decodedJwtOutput" class="decoded-jwt-output">Decode the current token to inspect its claims.</pre>
+          </div>
+
+          <div id="ipPresetControls" class="control-card scene-control-group hidden">
+            <p class="label">Client IP Preset</p>
+            <div class="segmented-control segmented-control-two" id="ipPresetControl">
+              <button class="segment active" data-ip-preset="allowed" type="button">allowed</button>
+              <button class="segment" data-ip-preset="denied" type="button">denied</button>
+              <button class="segment" data-ip-preset="not-listed" type="button">not listed</button>
+            </div>
+          </div>
+
+          <div id="schemaCaseControls" class="control-card scene-control-group hidden">
+            <p class="label">Validation Case</p>
+            <div class="segmented-control" id="schemaCaseControl">
+              <button class="segment active" data-schema-case="valid-request" type="button">valid request</button>
+              <button class="segment" data-schema-case="invalid-body" type="button">invalid body</button>
+              <button class="segment" data-schema-case="invalid-query-param" type="button">invalid query</button>
+              <button class="segment" data-schema-case="invalid-header-content-type" type="button">invalid header / content-type</button>
+            </div>
+          </div>
+
+          <div id="sizeCaseControls" class="control-card scene-control-group hidden">
+            <p class="label">Payload Size Case</p>
+            <div class="segmented-control segmented-control-two" id="sizeCaseControl">
+              <button class="segment active" data-size-case="positive" type="button">does not exceed limit</button>
+              <button class="segment" data-size-case="negative" type="button">exceeds limit</button>
+            </div>
+          </div>
+
+          <div id="meteringScenarioControls" class="control-card scene-control-group hidden">
+            <p class="label">Demo Consumer</p>
+            <div class="segmented-control" id="meteringScenarioControl">
+              <button class="segment active" data-metering-scenario="demo-bank-1" type="button">demo-bank-1</button>
+              <button class="segment" data-metering-scenario="demo-bank-2" type="button">demo-bank-2</button>
+            </div>
+          </div>
+
+          <div id="datakitScenarioControls" class="control-card scene-control-group hidden">
+            <p class="label">DataKit Scenario</p>
+            <div class="segmented-control" id="datakitScenarioControl">
+              <button class="segment active" data-datakit-scenario="fallback" type="button">conditional fallback</button>
+              <button class="segment" data-datakit-scenario="combine" type="button">combine results</button>
+              <button class="segment" data-datakit-scenario="cache" type="button">redis cache</button>
+            </div>
+          </div>
+
+          <div id="datakitFallbackModeControls" class="control-card scene-control-group hidden">
+            <p class="label">Fallback Branch</p>
+            <div class="segmented-control segmented-control-two" id="datakitFallbackModeControl">
+              <button class="segment active" data-datakit-fallback-mode="api1-success" type="button">API1 returns 200</button>
+              <button class="segment" data-datakit-fallback-mode="api1-fail" type="button">API1 returns non-200</button>
+            </div>
+          </div>
+
+          <div id="injectionSubsceneControls" class="control-card scene-control-group hidden">
+            <p class="label">Inspection Location</p>
+            <div class="segmented-control segmented-control-two" id="injectionSubsceneControl">
+              <button class="segment active" data-injection-subscene="query-params" type="button">query params</button>
+              <button class="segment" data-injection-subscene="body" type="button">body</button>
+              <button class="segment" data-injection-subscene="headers" type="button">headers</button>
+            </div>
+          </div>
+
+          <div id="transportSecurityCaseControls" class="control-card scene-control-group hidden">
+            <p class="label">Transport Policy</p>
+            <div class="segmented-control segmented-control-two" id="transportSecurityCaseControl">
+              <button class="segment active" data-transport-security-case="http-blocked" type="button">http blocked</button>
+              <button class="segment" data-transport-security-case="http-to-https-redirect" type="button">http to https redirect</button>
+            </div>
+          </div>
+
+          <div id="versionRoutingModeControls" class="control-card scene-control-group hidden">
+            <p class="label">Routing Mode</p>
+            <div class="segmented-control segmented-control-two" id="versionRoutingModeControl">
+              <button class="segment active" data-version-routing-mode="path" type="button">path-based</button>
+              <button class="segment" data-version-routing-mode="header" type="button">header-based</button>
+            </div>
+          </div>
+
+          <div id="versionRoutingVersionControls" class="control-card scene-control-group hidden">
+            <p class="label">API Version</p>
+            <div class="segmented-control segmented-control-two" id="versionRoutingVersionControl">
+              <button class="segment active" data-api-version="v1" type="button">v1</button>
+              <button class="segment" data-api-version="v2" type="button">v2</button>
+            </div>
+          </div>
+
+          <div id="canaryScenarioControls" class="control-card scene-control-group hidden">
+            <p class="label">Canary Scenario</p>
+            <div class="segmented-control" id="canaryScenarioControl">
+              <button class="segment active" data-canary-scenario="40-rollout" type="button">40% rollout</button>
+              <button class="segment" data-canary-scenario="time-based" type="button">time-based rollout</button>
+              <button class="segment" data-canary-scenario="header-based" type="button">header-based</button>
+              <button class="segment" data-canary-scenario="consumer-based" type="button">consumer-based</button>
+            </div>
+          </div>
+
+          <div id="canaryHeaderControls" class="control-card scene-control-group hidden">
+            <p class="label">Header Override</p>
+            <div class="segmented-control segmented-control-two" id="canaryHeaderControl">
+              <button class="segment active" data-canary-header-mode="always" type="button">always to v2</button>
+              <button class="segment" data-canary-header-mode="never" type="button">never to v2</button>
+            </div>
+          </div>
+
+          <div id="canaryConsumerControls" class="control-card scene-control-group hidden">
+            <p class="label">Canary Consumer</p>
+            <div class="segmented-control segmented-control-two" id="canaryConsumerControl">
+              <button class="segment active" data-canary-consumer="consumer-pilot" type="button">consumer-pilot</button>
+              <button class="segment" data-canary-consumer="consumer-standard-lifecycle" type="button">consumer-standard</button>
+            </div>
+          </div>
+
+          <div id="deprecationCaseControls" class="control-card scene-control-group hidden">
+            <p class="label">Deprecation Flow</p>
+            <div class="segmented-control" id="deprecationCaseControl">
+              <button class="segment active" data-deprecation-case="deprecated-v1" type="button">deprecated v1</button>
+              <button class="segment" data-deprecation-case="current-v2" type="button">current v2</button>
+              <button class="segment" data-deprecation-case="sunset-enforced" type="button">sunset enforced</button>
+            </div>
+          </div>
+
+          <div class="control-card request-preview">
+            <p class="label">Request Preview</p>
+            <div id="requestPreviewGrid" class="request-preview-grid"></div>
+          </div>
+
+          <div class="action-row">
+            <button id="runScenarioButton" class="primary-button" type="button">Run Scenario</button>
+            <button id="resetPanelButton" class="ghost-button" type="button">Reset</button>
+          </div>
+
+        </aside>
+      </main>
+
+      <section class="console-panel">
+        <div class="panel-header">
+          <div>
+            <p class="eyebrow">Console</p>
+            <h2>Request and Response</h2>
+          </div>
+          <div class="console-actions">
+            <button id="consoleDetailButton" class="ghost-button" type="button" disabled>Detailed View</button>
+          </div>
+        </div>
+        <div id="consoleOutput" class="console-output">
+          <div class="console-empty console-empty-wide">
+            <p>Run the scene to see the full request and response that passed through Kong.</p>
+          </div>
+        </div>
+      </section>
+
+      <div id="architectureModal" class="modal-shell hidden" aria-hidden="true">
+        <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="architectureTitle">
+          <div class="modal-header">
+            <div>
+              <p class="eyebrow">Architecture</p>
+              <h2 id="architectureTitle">Header-Based Routing Flow</h2>
+            </div>
+            <button id="closeArchitectureButton" class="ghost-button" type="button">Close</button>
+          </div>
+          <div class="modal-body">
+            <p>Client requests enter the Kong data plane through a single public path.</p>
+            <p>The gateway receives its configuration from the local Kong Admin API and a PostgreSQL-backed control plane.</p>
+            <p>Kong evaluates the <code>x-region</code> request header and forwards the request to the matching upstream service.</p>
+          </div>
+        </div>
+      </div>
+
+      <div id="sceneDetailsModal" class="modal-shell hidden" aria-hidden="true">
+        <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="sceneDetailsTitle">
+          <div class="modal-header">
+            <div>
+              <p class="eyebrow">Scene Details</p>
+              <h2 id="sceneDetailsTitle">Scene Entities</h2>
+            </div>
+            <button id="closeSceneDetailsButton" class="ghost-button" type="button">Close</button>
+          </div>
+          <div id="sceneDetailsContent" class="modal-body entity-list"></div>
+        </div>
+      </div>
+
+      <div id="detailViewModal" class="modal-shell hidden" aria-hidden="true">
+        <div class="modal-card modal-card-wide" role="dialog" aria-modal="true" aria-labelledby="detailViewTitle">
+          <div class="modal-header">
+            <div>
+              <p class="eyebrow">Detailed View</p>
+              <h2 id="detailViewTitle">Scene Details</h2>
+            </div>
+            <button id="closeDetailViewButton" class="ghost-button" type="button">Close</button>
+          </div>
+          <div class="detail-view-content">
+            <div id="detailMeta" class="detail-meta-grid"></div>
+            <div id="detailSteps" class="detail-steps"></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="onboardApiModal" class="modal-shell hidden" aria-hidden="true">
+        <div class="modal-card modal-card-wide" role="dialog" aria-modal="true" aria-labelledby="onboardApiTitle">
+          <div class="modal-header">
+            <div>
+              <p class="eyebrow">CI/CD Pipeline</p>
+              <h2 id="onboardApiTitle">API Onboarding</h2>
+            </div>
+            <button id="closeOnboardApiButton" class="ghost-button compact-button" type="button">Close</button>
+          </div>
+          <div class="detail-view-content">
+            <div class="detail-meta-grid">
+              <div class="entity-block">
+                <p class="label">Pipeline Status</p>
+                <strong id="onboardApiStatus">Idle</strong>
+              </div>
+              <div class="entity-block">
+                <p class="label">Current Command</p>
+                <strong id="onboardApiCurrentCommand">No run in progress.</strong>
+              </div>
+            </div>
+            <section class="pipeline-block">
+              <div class="pipeline-block-header">
+                <p class="label">Pipeline Steps</p>
+              </div>
+              <div id="onboardApiCommandList" class="pipeline-command-list"></div>
+            </section>
+            <section class="pipeline-block">
+              <div class="pipeline-block-header">
+                <p class="label">Pipeline Event Stream</p>
+              </div>
+              <pre id="onboardApiLogs" class="pipeline-log-output">No pipeline has been started yet.</pre>
+            </section>
+            <section class="pipeline-block">
+              <div class="pipeline-block-header">
+                <p class="label">Test Onboarded API</p>
+              </div>
+              <div class="detail-step-grid">
+                <div class="detail-pane">
+                  <p class="label">Application API Key</p>
+                  <textarea id="onboardApiKeyInput" class="token-editor" spellcheck="false" placeholder="Paste the generated app credential here"></textarea>
+                  <div class="action-row">
+                    <button id="testOnboardedApiButton" class="primary-button" type="button">Test API</button>
+                  </div>
+                </div>
+                <div class="detail-pane">
+                  <p class="label">curl Command</p>
+                  <pre id="onboardApiCurl" class="detail-pre">curl -k -i -H 'Accept: application/json' -H 'apikey: &lt;generated-key&gt;' 'https://localhost:8443/portal/orders'</pre>
+                </div>
+              </div>
+              <div class="detail-pane">
+                <p class="label">Response</p>
+                <pre id="onboardApiResponse" class="pipeline-log-output">Run the onboarding pipeline, generate an app credential in the portal, then test the API here.</pre>
+              </div>
+            </section>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="/static/app.js"></script>
+  </body>
+</html>

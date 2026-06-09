@@ -1,0 +1,560 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 11,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "enablePagination": true,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true,
+        "sortBy": [
+          {
+            "desc": true,
+            "displayName": "Event Time"
+          }
+        ]
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "editorMode": "code",
+          "expr": "{service_name=\"konnect-audit-webhook\",control_plane_change=\"true\"} | json | line_format \"{\\\"event_ts\\\":\\\"{{.event_ts}}\\\",\\\"principal_id\\\":\\\"{{.principal_id}}\\\",\\\"method\\\":\\\"{{.act}}\\\",\\\"target_kind\\\":\\\"{{.target_kind}}\\\",\\\"request\\\":\\\"{{.request}}\\\",\\\"status\\\":\\\"{{.status}}\\\",\\\"trace_id\\\":\\\"{{.trace_id}}\\\",\\\"granted\\\":\\\"{{.granted}}\\\"}\"",
+          "queryType": "range",
+          "refId": "A"
+        }
+      ],
+      "title": "Latest Control Plane Changes",
+      "transformations": [
+        {
+          "id": "extractFields",
+          "options": {
+            "format": "json",
+            "replace": false,
+            "source": "Line"
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Line": true,
+              "labels": true,
+              "tsNs": true
+            },
+            "indexByName": {
+              "Time": 0,
+              "event_ts": 0,
+              "principal_id": 1,
+              "method": 2,
+              "target_kind": 3,
+              "request": 4,
+              "status": 5,
+              "granted": 6,
+              "trace_id": 7
+            },
+            "renameByName": {
+              "Time": "Event Time",
+              "event_ts": "Event Timestamp",
+              "principal_id": "Principal ID",
+              "method": "Method",
+              "target_kind": "Target Type",
+              "request": "Request Path",
+              "status": "Status",
+              "granted": "Granted",
+              "trace_id": "Trace ID"
+            }
+          }
+        }
+      ],
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "grafana",
+        "uid": "-- Grafana --"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 24,
+        "x": 0,
+        "y": 11
+      },
+      "id": 2,
+      "options": {
+        "content": "### Konnect audit trail\n\nThis dashboard focuses on **control plane change events** streamed from Konnect through the audit webhook.\n\nA record appears here when Konnect logs an access event against a control plane with one of these methods:\n- `POST`\n- `PATCH`\n- `PUT`\n- `DELETE`\n\nUse the table to answer **who changed what and when**. Use the request path and target type to identify the changed Konnect resource.",
+        "mode": "markdown"
+      },
+      "title": "How To Read This Dashboard",
+      "type": "text"
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 18
+      },
+      "id": 3,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "editorMode": "code",
+          "expr": "sum(count_over_time({service_name=\"konnect-audit-webhook\",control_plane_change=\"true\"}[24h]))",
+          "queryType": "instant",
+          "refId": "A"
+        }
+      ],
+      "title": "Control Plane Changes (Last Day)",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 18
+      },
+      "id": 4,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "editorMode": "code",
+          "expr": "count(sum by (principal_id) (count_over_time({service_name=\"konnect-audit-webhook\",control_plane_change=\"true\"}[24h])))",
+          "queryType": "instant",
+          "refId": "A"
+        }
+      ],
+      "title": "Unique Principals (Last Day)",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 18
+      },
+      "id": 5,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "editorMode": "code",
+          "expr": "sum(count_over_time({service_name=\"konnect-audit-webhook\",control_plane_change=\"true\",request_method=~\"POST|PATCH|PUT|DELETE\"}[24h]))",
+          "queryType": "instant",
+          "refId": "A"
+        }
+      ],
+      "title": "Write Operations (Last Day)",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "pointSize": 4,
+            "showPoints": "always",
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 24,
+        "x": 0,
+        "y": 26
+      },
+      "id": 6,
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "editorMode": "code",
+          "expr": "sum by () (count_over_time({service_name=\"konnect-audit-webhook\",control_plane_change=\"true\"}[$__interval]))",
+          "legendFormat": "Control plane changes",
+          "queryType": "range",
+          "refId": "A"
+        }
+      ],
+      "title": "Control Plane Changes Over Time",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 0,
+        "y": 35
+      },
+      "id": 7,
+      "options": {
+        "legend": {
+          "displayMode": "hidden",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "tooltip": {
+          "mode": "single"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "editorMode": "code",
+          "expr": "topk(10, sum by (principal_id) (count_over_time({service_name=\"konnect-audit-webhook\",control_plane_change=\"true\"}[$__range])))",
+          "legendFormat": "{{principal_id}}",
+          "queryType": "instant",
+          "refId": "A"
+        }
+      ],
+      "title": "Top Principals By Changes",
+      "type": "barchart"
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 12,
+        "y": 35
+      },
+      "id": 8,
+      "options": {
+        "legend": {
+          "displayMode": "hidden",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "tooltip": {
+          "mode": "single"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "editorMode": "code",
+          "expr": "topk(10, sum by (target_kind) (count_over_time({service_name=\"konnect-audit-webhook\",control_plane_change=\"true\"}[$__range])))",
+          "legendFormat": "{{target_kind}}",
+          "queryType": "instant",
+          "refId": "A"
+        }
+      ],
+      "title": "Top Changed Resource Types",
+      "type": "barchart"
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 0,
+        "y": 44
+      },
+      "id": 9,
+      "options": {
+        "legend": {
+          "displayMode": "hidden",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "tooltip": {
+          "mode": "single"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "editorMode": "code",
+          "expr": "sum by (request_method) (count_over_time({service_name=\"konnect-audit-webhook\",control_plane_change=\"true\"}[$__range]))",
+          "legendFormat": "{{request_method}}",
+          "queryType": "instant",
+          "refId": "A"
+        }
+      ],
+      "title": "Control Plane Changes By Method",
+      "type": "barchart"
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 12,
+        "y": 44
+      },
+      "id": 10,
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "editorMode": "code",
+          "expr": "sum by (status) (count_over_time({service_name=\"konnect-audit-webhook\",control_plane_change=\"true\"}[$__range]))",
+          "legendFormat": "status {{status}}",
+          "queryType": "instant",
+          "refId": "A"
+        }
+      ],
+      "title": "Control Plane Changes By Status",
+      "type": "barchart"
+    },
+    {
+      "datasource": {
+        "type": "grafana",
+        "uid": "-- Grafana --"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 53
+      },
+      "id": 11,
+      "options": {
+        "content": "### Retrieve the full audit payload\n\nRun this in **Grafana Explore** against **Loki** to return the stored audit event JSON:\n\n```logql\n{service_name=\"konnect-audit-webhook\", control_plane_change=\"true\"}\n```\n\nThe stored event contains:\n- top-level fields used by the dashboard\n- `_konnect_raw` with the **entire original Konnect payload unchanged**\n- `_receiver` with local enrichment metadata\n\nTo narrow to a specific event, add one or more filters after `| json`, for example:\n\n```logql\n{service_name=\"konnect-audit-webhook\", control_plane_change=\"true\"}\n| json\n| principal_id=\"YOUR_PRINCIPAL_ID\"\n```\n\n```logql\n{service_name=\"konnect-audit-webhook\", control_plane_change=\"true\"}\n| json\n| trace_id=\"YOUR_TRACE_ID\"\n```\n\n```logql\n{service_name=\"konnect-audit-webhook\", control_plane_change=\"true\"}\n| json\n| request=~\".*core-entities/routes.*\"\n```\n\nFor full-payload inspection, expand the log line and inspect `_konnect_raw`.",
+        "mode": "markdown"
+      },
+      "title": "Full Audit Payload Lookup",
+      "type": "text"
+    }
+  ],
+  "refresh": "10s",
+  "schemaVersion": 39,
+  "style": "dark",
+  "tags": [
+    "kong",
+    "konnect",
+    "audit"
+  ],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-24h",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "",
+  "title": "Konnect Audit Trail",
+  "uid": "konnect-audit-trail",
+  "version": 1,
+  "weekStart": ""
+}

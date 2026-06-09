@@ -1,0 +1,42 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Partner Orders API",
+    "version": "v1"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8000"
+    }
+  ],
+  "paths": {
+    "/portal/orders": {
+      "get": {
+        "summary": "List partner orders",
+        "description": "Returns a lightweight order summary for the Dev Portal onboarding showcase.",
+        "security": [
+          {
+            "apikey": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          },
+          "401": {
+            "description": "API key missing or invalid"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "apikey": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "apikey"
+      }
+    }
+  }
+}
