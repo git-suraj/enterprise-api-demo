@@ -22,6 +22,7 @@ const state = {
   resilienceScenario: "weighted-load-balancing",
   links: { logs: "#", requestAudit: "#", audit: "#", trace: "#" },
   scenes: {},
+  credentials: [],
   lastRun: null,
   countdownTimer: null,
   countdownEndsAtMs: null,
@@ -108,6 +109,7 @@ const elements = {
   runScenarioButton: document.getElementById("runScenarioButton"),
   onboardApiButton: document.getElementById("onboardApiButton"),
   resetSceneButton: document.getElementById("resetSceneButton"),
+  viewCredentialsButton: document.getElementById("viewCredentialsButton"),
   resetPanelButton: document.getElementById("resetPanelButton"),
   viewArchitectureButton: document.getElementById("viewArchitectureButton"),
   viewTraceButton: document.getElementById("viewTraceButton"),
@@ -123,6 +125,9 @@ const elements = {
   closeDetailViewButton: document.getElementById("closeDetailViewButton"),
   detailMeta: document.getElementById("detailMeta"),
   detailSteps: document.getElementById("detailSteps"),
+  credentialsModal: document.getElementById("credentialsModal"),
+  closeCredentialsButton: document.getElementById("closeCredentialsButton"),
+  credentialsContent: document.getElementById("credentialsContent"),
   onboardApiModal: document.getElementById("onboardApiModal"),
   closeOnboardApiButton: document.getElementById("closeOnboardApiButton"),
   onboardApiStatus: document.getElementById("onboardApiStatus"),
@@ -1472,10 +1477,12 @@ async function loadConfig() {
   const payload = await response.json();
   state.links = payload.links;
   state.scenes = payload.scenes;
+  state.credentials = payload.credentials || [];
   elements.sceneSelect.innerHTML = payload.sceneOptions
     .map((scene) => `<option value="${scene.id}">${scene.label}</option>`)
     .join("");
   renderSceneMenu();
+  renderCredentialsModal();
   updateSceneState(payload.sceneOptions[0]?.id || "traffic-routing-header");
 }
 
@@ -1485,6 +1492,55 @@ function updateArchitectureModal() {
   const body = elements.architectureModal.querySelector(".modal-body");
   body.innerHTML = (scene.architecture || [])
     .map((line) => `<p>${line}</p>`)
+    .join("");
+}
+
+function renderCredentialsModal() {
+  const sections = state.credentials || [];
+  if (!sections.length) {
+    elements.credentialsContent.innerHTML = `
+      <div class="entity-block">
+        <p class="label">Credentials</p>
+        <strong>No credentials are configured for this demo.</strong>
+      </div>
+    `;
+    return;
+  }
+
+  elements.credentialsContent.innerHTML = sections
+    .map(
+      (section) => `
+        <section class="credential-section">
+          <div class="credential-copy">
+            <p class="eyebrow">${escapeHtml(section.title || "Credentials")}</p>
+            <p>${escapeHtml(section.description || "")}</p>
+          </div>
+          <div class="credential-grid">
+            ${(section.entries || [])
+              .map(
+                (entry) => `
+                  <article class="credential-card">
+                    <strong>${escapeHtml(entry.name || "Entry")}</strong>
+                    <div class="credential-fields">
+                      ${(entry.fields || [])
+                        .map(
+                          ([label, value]) => `
+                            <div class="credential-row">
+                              <span>${escapeHtml(label || "")}</span>
+                              <code>${escapeHtml(value || "")}</code>
+                            </div>
+                          `,
+                        )
+                        .join("")}
+                    </div>
+                  </article>
+                `,
+              )
+              .join("")}
+          </div>
+        </section>
+      `,
+    )
     .join("");
 }
 
@@ -2014,6 +2070,10 @@ elements.testOnboardedApiButton.addEventListener("click", testOnboardedApi);
 elements.runScenarioButton.addEventListener("click", runScenario);
 elements.resetSceneButton.addEventListener("click", resetSceneRuntime);
 elements.resetPanelButton.addEventListener("click", resetSceneRuntime);
+elements.viewCredentialsButton.addEventListener("click", () => {
+  renderCredentialsModal();
+  toggleModal(elements.credentialsModal, true);
+});
 elements.viewArchitectureButton.addEventListener("click", () => {
   renderSceneDetails();
   toggleModal(elements.sceneDetailsModal, true);
@@ -2031,9 +2091,10 @@ elements.consoleDetailButton.addEventListener("click", () => {
 elements.closeArchitectureButton.addEventListener("click", () => toggleModal(elements.architectureModal, false));
 elements.closeSceneDetailsButton.addEventListener("click", () => toggleModal(elements.sceneDetailsModal, false));
 elements.closeDetailViewButton.addEventListener("click", () => toggleModal(elements.detailViewModal, false));
+elements.closeCredentialsButton.addEventListener("click", () => toggleModal(elements.credentialsModal, false));
 elements.closeOnboardApiButton.addEventListener("click", () => toggleModal(elements.onboardApiModal, false));
 
-for (const modal of [elements.architectureModal, elements.sceneDetailsModal, elements.detailViewModal, elements.onboardApiModal]) {
+for (const modal of [elements.architectureModal, elements.sceneDetailsModal, elements.detailViewModal, elements.credentialsModal, elements.onboardApiModal]) {
   modal.addEventListener("click", (event) => {
     if (event.target === modal) {
       toggleModal(modal, false);
@@ -2053,6 +2114,7 @@ window.addEventListener("keydown", (event) => {
     toggleModal(elements.architectureModal, false);
     toggleModal(elements.sceneDetailsModal, false);
     toggleModal(elements.detailViewModal, false);
+    toggleModal(elements.credentialsModal, false);
     toggleModal(elements.onboardApiModal, false);
   }
 });

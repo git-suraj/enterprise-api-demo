@@ -27,6 +27,15 @@
             <select id="sceneSelect" class="scene-select-native" tabindex="-1" aria-hidden="true"></select>
           </div>
           <button id="resetSceneButton" class="ghost-button" type="button">Reset Scene</button>
+          <button
+            id="viewCredentialsButton"
+            class="info-icon-button"
+            type="button"
+            aria-label="View demo credentials"
+            title="View demo credentials"
+          >
+            i
+          </button>
           <button id="onboardApiButton" class="ghost-button" type="button">Onboard API</button>
           <button id="viewArchitectureButton" class="ghost-button" type="button">Scene Details</button>
           <button id="viewTraceButton" class="ghost-button" type="button">View Trace</button>
@@ -388,6 +397,19 @@
             <div id="detailMeta" class="detail-meta-grid"></div>
             <div id="detailSteps" class="detail-steps"></div>
           </div>
+        </div>
+      </div>
+
+      <div id="credentialsModal" class="modal-shell hidden" aria-hidden="true">
+        <div class="modal-card modal-card-wide" role="dialog" aria-modal="true" aria-labelledby="credentialsTitle">
+          <div class="modal-header">
+            <div>
+              <p class="eyebrow">Reference</p>
+              <h2 id="credentialsTitle">Demo Credentials</h2>
+            </div>
+            <button id="closeCredentialsButton" class="ghost-button compact-button" type="button">Close</button>
+          </div>
+          <div id="credentialsContent" class="detail-view-content"></div>
         </div>
       </div>
 

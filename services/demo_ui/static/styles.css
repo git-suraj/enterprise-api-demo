@@ -172,6 +172,34 @@ h2 {
   font-size: 12px;
 }
 
+.info-icon-button {
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 1px solid rgba(161, 255, 113, 0.22);
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(20, 24, 30, 0.98), rgba(12, 16, 20, 1));
+  color: rgba(212, 255, 157, 0.92);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+.info-icon-button:hover,
+.info-icon-button:focus-visible {
+  border-color: rgba(161, 255, 113, 0.34);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 0 0 1px rgba(161, 255, 113, 0.08),
+    0 0 14px rgba(161, 255, 113, 0.08);
+  outline: none;
+}
+
 .scene-picker-trigger strong {
   font-size: 13px;
   font-weight: 600;
@@ -922,6 +950,70 @@ h2 {
   background: rgba(5, 8, 6, 0.84);
 }
 
+.credential-section {
+  display: grid;
+  gap: 12px;
+}
+
+.credential-section + .credential-section {
+  padding-top: 6px;
+  border-top: 1px solid rgba(161, 255, 113, 0.08);
+}
+
+.credential-copy {
+  display: grid;
+  gap: 4px;
+}
+
+.credential-copy p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.credential-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.credential-card {
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: rgba(5, 8, 6, 0.84);
+  display: grid;
+  gap: 10px;
+}
+
+.credential-card strong {
+  display: block;
+}
+
+.credential-fields {
+  display: grid;
+  gap: 8px;
+}
+
+.credential-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.credential-row span {
+  color: var(--muted);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.credential-row code {
+  text-align: right;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
 .detail-step-header {
   display: grid;
   gap: 4px;
@@ -1086,6 +1178,7 @@ h2 {
 
   .console-split,
   .detail-meta-grid,
+  .credential-grid,
   .detail-grid,
   .instance-control-row,
   .pipeline-command-row {

@@ -34,6 +34,7 @@ DEMO_TRACE_URL = os.environ.get("DEMO_TRACE_URL", "http://localhost:3001/explore
 DEMO_PAYLOAD_INSPECTION_URL = os.environ.get("DEMO_PAYLOAD_INSPECTION_URL", "http://localhost:3001/explore")
 DEMO_DEBUGGER_URL = os.environ.get("DEMO_DEBUGGER_URL", KONG_ADMIN_URL)
 DEMO_PORTAL_URL = os.environ.get("DEMO_PORTAL_URL", "http://localhost:8003/default")
+KEYCLOAK_PUBLIC_URL = os.environ.get("KEYCLOAK_PUBLIC_URL", "http://localhost:8081")
 DEMO_PROXY_PUBLIC_URL = os.environ.get("DEMO_PROXY_PUBLIC_URL", "http://localhost:8000").rstrip("/")
 DEMO_TLS_PROXY_PUBLIC_URL = os.environ.get("DEMO_TLS_PROXY_PUBLIC_URL", "https://localhost:8443").rstrip("/")
 DEV_PORTAL_API_URL = os.environ.get("DEV_PORTAL_API_URL", "http://kong-cp:8004").rstrip("/")
@@ -50,6 +51,10 @@ KEYCLOAK_CONSUMER1_SECRET = os.environ.get("KEYCLOAK_CONSUMER1_SECRET", "consume
 KEYCLOAK_CONSUMER2_CLIENT_ID = os.environ.get("KEYCLOAK_CONSUMER2_CLIENT_ID", "consumer-2")
 KEYCLOAK_CONSUMER2_SECRET = os.environ.get("KEYCLOAK_CONSUMER2_SECRET", "consumer-2-secret")
 KEYCLOAK_INTERNAL_BASE_URL = os.environ.get("KEYCLOAK_INTERNAL_BASE_URL", "http://keycloak:8080")
+KEYCLOAK_ADMIN_USERNAME = os.environ.get("KEYCLOAK_ADMIN_USERNAME", "admin")
+KEYCLOAK_ADMIN_PASSWORD = os.environ.get("KEYCLOAK_ADMIN_PASSWORD", "admin")
+DEV_PORTAL_DEVELOPER_EMAIL = os.environ.get("DEV_PORTAL_DEVELOPER_EMAIL", "portal1@example.com")
+DEV_PORTAL_DEVELOPER_PASSWORD = os.environ.get("DEV_PORTAL_DEVELOPER_PASSWORD", "portal1")
 CRYPTO_HELPER_URL = os.environ.get("CRYPTO_HELPER_URL", "http://localhost:8092")
 
 CANARY_COUNTERS_LOCK = threading.Lock()
@@ -78,6 +83,69 @@ DEV_PORTAL_ALLOWED_ORIGINS = {
     "https://localhost:8446",
 }
 
+MANAGER_USERS = [
+    {
+        "label": "Platform Admin",
+        "username": "admin",
+        "password": "admin",
+        "workspace": "default",
+        "role": "platform-super-admin",
+    },
+    {
+        "label": "Team A Manager",
+        "username": "demo1",
+        "password": "demo1",
+        "workspace": "team-a",
+        "role": "team-a-manager",
+    },
+    {
+        "label": "Team B Manager",
+        "username": "demo2",
+        "password": "demo2",
+        "workspace": "team-b",
+        "role": "team-b-manager",
+    },
+]
+
+KEY_AUTH_USERS = [
+    {
+        "label": "Rate Limit Gold",
+        "username": "consumer-gold",
+        "credential": "key-consumer-gold",
+        "scenes": "Rate limiting",
+    },
+    {
+        "label": "Rate Limit Standard",
+        "username": "consumer-standard",
+        "credential": "key-consumer-standard",
+        "scenes": "Rate limiting",
+    },
+    {
+        "label": "Canary Pilot",
+        "username": "consumer-pilot",
+        "credential": "key-consumer-pilot",
+        "scenes": "Canary migration",
+    },
+    {
+        "label": "Canary Standard",
+        "username": "consumer-standard-lifecycle",
+        "credential": "key-consumer-standard-lifecycle",
+        "scenes": "Canary migration",
+    },
+    {
+        "label": "Metering Consumer 1",
+        "username": "demo-bank-1",
+        "credential": "key-demo-bank-1",
+        "scenes": "Metering and billing",
+    },
+    {
+        "label": "Metering Consumer 2",
+        "username": "demo-bank-2",
+        "credential": "key-demo-bank-2",
+        "scenes": "Metering and billing",
+    },
+]
+
 
 def gateway_blocked_status(reason):
     return {
@@ -86,6 +154,91 @@ def gateway_blocked_status(reason):
         "statusRoute": reason,
         "statusRouteClass": "error",
     }
+
+
+def build_demo_credentials():
+    credentials = [
+        {
+            "title": "Kong Manager",
+            "description": "Workspace and platform logins for Kong Manager.",
+            "entries": [
+                {
+                    "name": user["label"],
+                    "fields": [
+                        ["URL", KONG_MANAGER_URL],
+                        ["Username", user["username"]],
+                        ["Password", user["password"]],
+                        ["Workspace", user["workspace"]],
+                        ["Role", user["role"]],
+                    ],
+                }
+                for user in MANAGER_USERS
+            ],
+        },
+        {
+            "title": "Dev Portal",
+            "description": "Developer login for the self-service portal flow.",
+            "entries": [
+                {
+                    "name": "Portal Developer",
+                    "fields": [
+                        ["URL", DEMO_PORTAL_URL],
+                        ["Email", DEV_PORTAL_DEVELOPER_EMAIL],
+                        ["Password", DEV_PORTAL_DEVELOPER_PASSWORD],
+                    ],
+                }
+            ],
+        },
+        {
+            "title": "Keycloak",
+            "description": "Admin and client-credentials identities used by the identity and DataKit scenes.",
+            "entries": [
+                {
+                    "name": "Keycloak Admin",
+                    "fields": [
+                        ["URL", KEYCLOAK_PUBLIC_URL],
+                        ["Username", KEYCLOAK_ADMIN_USERNAME],
+                        ["Password", KEYCLOAK_ADMIN_PASSWORD],
+                        ["Realm", KEYCLOAK_REALM],
+                    ],
+                },
+                {
+                    "name": "consumer-1",
+                    "fields": [
+                        ["Client ID", KEYCLOAK_CONSUMER1_CLIENT_ID],
+                        ["Client Secret", KEYCLOAK_CONSUMER1_SECRET],
+                        ["Realm", KEYCLOAK_REALM],
+                        ["Access", "Allowed: has api-access role"],
+                    ],
+                },
+                {
+                    "name": "consumer-2",
+                    "fields": [
+                        ["Client ID", KEYCLOAK_CONSUMER2_CLIENT_ID],
+                        ["Client Secret", KEYCLOAK_CONSUMER2_SECRET],
+                        ["Realm", KEYCLOAK_REALM],
+                        ["Access", "Denied: missing api-access role"],
+                    ],
+                },
+            ],
+        },
+        {
+            "title": "Gateway API Keys",
+            "description": "Key-auth credentials used by the rate-limit, metering, and canary scenes.",
+            "entries": [
+                {
+                    "name": user["label"],
+                    "fields": [
+                        ["Consumer", user["username"]],
+                        ["API Key", user["credential"]],
+                        ["Used In", user["scenes"]],
+                    ],
+                }
+                for user in KEY_AUTH_USERS
+            ],
+        },
+    ]
+    return credentials
 
 
 def new_onboarding_job_state():
@@ -1780,6 +1933,7 @@ class DemoHandler(BaseHTTPRequestHandler):
                         {"id": scene["id"], "label": scene["label"]} for scene in SCENES.values()
                     ],
                     "scenes": SCENES,
+                    "credentials": build_demo_credentials(),
                     "links": {
                         "logs": DEMO_LOGS_URL,
                         "requestAudit": DEMO_REQUEST_AUDIT_URL,
